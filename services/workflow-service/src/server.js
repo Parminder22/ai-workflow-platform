@@ -26,10 +26,11 @@ app.use(express.json({ limit: '10mb' }))
 // Serve uploaded files statically
 app.use('/uploads', express.static(uploadsDir))
 
+// ── API Routes ────────────────────────────────────────────────────────────────
 app.use('/api', workflowRoutes)
 app.use('/api/graph', graphRoutes)
 app.use('/api', uploadRoutes)
-app.use('/webhook', webhookRoutes)  // Webhook IN — trigger workflows externally
+app.use('/webhook', webhookRoutes)
 
 app.get('/health', (req, res) => {
   res.json({
@@ -39,6 +40,18 @@ app.get('/health', (req, res) => {
   })
 })
 
+// ── Serve Frontend ────────────────────────────────────────────────────────────
+const frontendDist = path.join(__dirname, '../../../frontend/dist')
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist))
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/webhook')) {
+      res.sendFile(path.join(frontendDist, 'index.html'))
+    }
+  })
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4001
 
 app.listen(PORT, async () => {
