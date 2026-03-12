@@ -21,7 +21,7 @@ import NodeSidebar from '../components/NodeSidebar'
 import { getStepType } from '../constants/stepTypes'
 import { useTheme } from '../theme'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4001'
+const API = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4001'
 
 // ── Toast System ─────────────────────────────────────────────────────────────
 

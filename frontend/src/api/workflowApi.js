@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const API = axios.create({ baseURL: `${import.meta.env.VITE_API_URL || 'http://localhost:4001'}/api` })
+const BASE = typeof window !== 'undefined' 
+  ? window.location.origin 
+  : 'http://localhost:4001'
+  
+const API = axios.create({ baseURL: `${BASE}/api` })
 
 // Normalize errors
 API.interceptors.response.use(
