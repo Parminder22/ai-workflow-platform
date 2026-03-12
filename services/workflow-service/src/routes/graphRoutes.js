@@ -541,59 +541,57 @@ Respond ONLY with a JSON array: [{"question":"...","answer":"..."}]`
         break
       }
 
-      case 'notify': {
-        const to      = config.to
-        const subject = config.subject || 'Workflow Complete'
-        const body    = config.body    || 'Your workflow has finished running.'
+          case 'notify': {
+      const to      = config.to
+      const subject = config.subject || 'Workflow Complete'
+      const body    = config.body    || 'Your workflow has finished running.'
 
-        if (!to) {
-          output = { sent: false, reason: 'No recipient — configure the "to" email in node settings' }
-          break
-        }
-
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-          output = { sent: false, reason: 'Email not configured — add EMAIL_USER and EMAIL_PASS to .env' }
-          break
-        }
-
-        try {
-          const nodemailerMod = await import('nodemailer')
-          const nodemailer = nodemailerMod.default ?? nodemailerMod
-          const transporter = nodemailer.createTransport({
-  host:   'smtp.gmail.com',
-  port:   587,
-  secure: false,
-  auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-})
-
-          // Extract the most useful text from upstream output
-          const upstream = upstreamData[0]
-          let upstreamText = '[no upstream data]'
-          if (upstream) {
-            if (typeof upstream === 'string') {
-              upstreamText = upstream
-            } else {
-              // Pull the most human-readable field first
-              upstreamText = upstream.summary
-                || upstream.text
-                || upstream.category
-                || upstream.message
-                || (upstream.chunks ? `${upstream.chunks.length} chunks produced` : null)
-                || (upstream.pairs  ? upstream.pairs.map((p, i) => `Q${i+1}: ${p.question}\nA${i+1}: ${p.answer}`).join('\n\n') : null)
-                || (upstream.fields ? Object.entries(upstream.fields).map(([k,v]) => `${k}: ${v}`).join('\n') : null)
-                || JSON.stringify(upstream, null, 2)
-            }
-          }
-
-          const resolvedBody = body.replace(/\{\{output\}\}/g, upstreamText)
-
-          await transporter.sendMail({ from: process.env.EMAIL_USER, to, subject, text: resolvedBody })
-          output = { sent: true, to, subject }
-        } catch (emailErr) {
-          output = { sent: false, error: emailErr.message }
-        }
+      if (!to) {
+        output = { sent: false, reason: 'No recipient configured' }
         break
       }
+
+      if (!process.env.RESEND_API_KEY) {
+        output = { sent: false, reason: 'RESEND_API_KEY not set in environment' }
+        break
+      }
+
+      try {
+        const { Resend } = await import('resend')
+        const resend = new Resend(process.env.RESEND_API_KEY)
+
+        const upstream = upstreamData[0]
+        let upstreamText = '[no upstream data]'
+        if (upstream) {
+          if (typeof upstream === 'string') {
+            upstreamText = upstream
+          } else {
+            upstreamText = upstream.summary
+              || upstream.text
+              || upstream.category
+              || upstream.message
+              || (upstream.pairs  ? upstream.pairs.map((p,i) => `Q${i+1}: ${p.question}\nA${i+1}: ${p.answer}`).join('\n\n') : null)
+              || (upstream.fields ? Object.entries(upstream.fields).map(([k,v]) => `${k}: ${v}`).join('\n') : null)
+              || (upstream.chunks ? `${upstream.chunks.length} chunks produced` : null)
+              || JSON.stringify(upstream, null, 2)
+          }
+        }
+
+        const resolvedBody = body.replace(/\{\{output\}\}/g, upstreamText)
+
+        await resend.emails.send({
+          from:    'FlowAI <onboarding@resend.dev>',
+          to,
+          subject,
+          text:    resolvedBody,
+        })
+
+        output = { sent: true, to, subject }
+      } catch (emailErr) {
+        output = { sent: false, error: emailErr.message }
+      }
+      break
+    }
 
       case 'webhook_out': {
         const url     = config.url
