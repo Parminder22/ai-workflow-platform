@@ -44,7 +44,7 @@ app.get('/health', (req, res) => {
 const frontendDist = path.join(__dirname, '../../../frontend/dist')
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist))
-  app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
     if (!req.path.startsWith('/api') && !req.path.startsWith('/webhook')) {
       res.sendFile(path.join(frontendDist, 'index.html'))
     }
